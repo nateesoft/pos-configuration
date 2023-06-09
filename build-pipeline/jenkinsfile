@@ -8,27 +8,27 @@ pipeline {
     }
     stages {
         stage('Stage 1') {
-            step {
+            steps {
                 echo "Print log app_name = ${app_name}"
             }
         }
         stage('Stage 2') {
-            step {
+            steps {
                 echo "Print log git_apps_branch = ${git_apps_branch}"
             }
         }
         stage('Stage 3') {
-            step {
+            steps {
                 echo "Print log env_name = ${env_name}"
             }
         }
         stage('Stage 4') {
-            step {
+            steps {
                 echo "Print log vault_env_name = ${vault_env_name}"
             }
         }
         stage('Stage 5') {
-            step {
+            steps {
                 echo "Print log scan_code = ${scan_code} ${ScanCode}"
             }
         }
