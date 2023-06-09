@@ -1,20 +1,12 @@
 pipeline {
-    agent any
-    environment {
-        NODE_IMAGE = 'node'
+    agent {
+        docker { image 'node:18.16.0-alpine' }
     }
     stages {
-        stage('Yarn Install') {
-            agent {
-                docker {
-                    image "${NODE_IMAGE}"
-                }
-            }
+        stage('Test node docker') {
             steps {
-                echo 'Yarn Install'
                 echo '*********************'
                 sh 'node --version'
-                sh 'yarn --version'
             }
         }
     }
