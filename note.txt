@@ -1,0 +1,1 @@
+welcome to pos configuration like connect-configuration
