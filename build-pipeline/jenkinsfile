@@ -6,14 +6,31 @@ pipeline {
         vault_env_name = "${vault_env_name}"
         scan_code = "${ScanCode}"
     }
-    stage 'Stage 1'
-    echo "Print log app_name = ${app_name}"
-    stage 'Stage 2'
-    echo "Print log git_apps_branch = ${git_apps_branch}"
-    stage 'Stage 3'
-    echo "Print log env_name = ${env_name}"
-    stage 'Stage 4'
-    echo "Print log vault_env_name = ${vault_env_name}"
-    stage 'Stage 5'
-    echo "Print log scan_code = ${scan_code} ${ScanCode}"
+    stages {
+        stage('Stage 1') {
+            step {
+                echo "Print log app_name = ${app_name}"
+            }
+        }
+        stage('Stage 2') {
+            step {
+                echo "Print log git_apps_branch = ${git_apps_branch}"
+            }
+        }
+        stage('Stage 3') {
+            step {
+                echo "Print log env_name = ${env_name}"
+            }
+        }
+        stage('Stage 4') {
+            step {
+                echo "Print log vault_env_name = ${vault_env_name}"
+            }
+        }
+        stage('Stage 5') {
+            step {
+                echo "Print log scan_code = ${scan_code} ${ScanCode}"
+            }
+        }
+    }
 }
