@@ -1,5 +1,5 @@
 pipeline {
-    agent { label: 'k8s-aws-dev' }
+    agent { label 'k8s-aws-dev' }
     environment {
         app_name = "${app_name}"
         git_apps_branch = "${git_apps_branch}"
