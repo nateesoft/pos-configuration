@@ -1,12 +1,19 @@
-node {
+pipeline {
+    environment {
+        app_name = ${app_name}
+        git_apps_branch = ${git_apps_branch}
+        env_name = ${env_name}
+        vault_env_name = ${vault_env_name}
+        scan_code = ${ScanCode}
+    }
     stage 'Stage 1'
-    echo 'Test configuration file 1'
+    echo "Print log app_name = ${app_name}"
     stage 'Stage 2'
-    echo 'Test configuration file 2'
+    echo "Print log git_apps_branch = ${git_apps_branch}"
     stage 'Stage 3'
-    echo 'Test configuration file 3'
+    echo "Print log env_name = ${env_name}"
     stage 'Stage 4'
-    echo 'Test configuration file 4'
+    echo "Print log vault_env_name = ${vault_env_name}"
     stage 'Stage 5'
-    echo 'Test configuration file 5'
+    echo "Print log scan_code = ${scan_code} ${ScanCode}"
 }
