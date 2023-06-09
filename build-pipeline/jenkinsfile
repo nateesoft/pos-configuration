@@ -1,36 +1,20 @@
 pipeline {
     agent any
     environment {
-        app_name = "${app_name}"
-        git_apps_branch = "${git_apps_branch}"
-        env_name = "${env_name}"
-        vault_env_name = "${vault_env_name}"
-        scan_code = "${ScanCode}"
+        NODE_IMAGE = 'node'
     }
     stages {
-        stage('Stage 1') {
-            steps {
-                echo "Print log app_name = ${app_name}"
+        stage('Yarn Install') {
+            agent {
+                docker {
+                    image "${NODE_IMAGE}"
+                }
             }
-        }
-        stage('Stage 2') {
             steps {
-                echo "Print log git_apps_branch = ${git_apps_branch}"
-            }
-        }
-        stage('Stage 3') {
-            steps {
-                echo "Print log env_name = ${env_name}"
-            }
-        }
-        stage('Stage 4') {
-            steps {
-                echo "Print log vault_env_name = ${vault_env_name}"
-            }
-        }
-        stage('Stage 5') {
-            steps {
-                echo "Print log scan_code = ${scan_code} ${ScanCode}"
+                echo 'Yarn Install'
+                echo '*********************'
+                sh 'node --version'
+                sh 'yarn --version'
             }
         }
     }
