@@ -1,0 +1,12 @@
+node {
+    stage 'Stage 1'
+    echo 'Test configuration file 1'
+    stage 'Stage 2'
+    echo 'Test configuration file 2'
+    stage 'Stage 3'
+    echo 'Test configuration file 3'
+    stage 'Stage 4'
+    echo 'Test configuration file 4'
+    stage 'Stage 5'
+    echo 'Test configuration file 5'
+}
