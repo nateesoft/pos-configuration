@@ -2,14 +2,12 @@ pipeline {
     environment {
         app_name = "${app_name}"
     }
-    options {
-        ansiColor('xterm')
-    }
     agent any
     stages {
         stage('Sync git') {
             steps {
                 echo "app_name = ${app_name}"
+                build(job: 'AP1010-CHAT/DevOps/GIT-SYNC/git_sync_ap1010-SCBConnect')
             }
         }
     }    
