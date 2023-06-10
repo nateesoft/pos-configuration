@@ -18,14 +18,16 @@ pipeline {
                     expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
                 }
             }
-            echo 'Cloning source code from GitLab repository...'
-            dir('apps') {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${env.git_apps_branch}"]],
-                    extensions: [[$class: 'CloneOption', timeout: 60]],
-                    userRemoteConfigs: [[url: "${env.git_url}"]]
-                ])
+            steps {
+                echo 'Cloning source code from GitLab repository...'
+                dir('apps') {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "*/${env.git_apps_branch}"]],
+                        extensions: [[$class: 'CloneOption', timeout: 60]],
+                        userRemoteConfigs: [[url: "${env.git_url}"]]
+                    ])
+                }
             }
         }
         // stage('Build Application') {
