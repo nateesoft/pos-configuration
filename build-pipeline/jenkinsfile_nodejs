@@ -12,13 +12,13 @@ pipeline {
             }
         }
         stage('Checkout SCM') {
-            echo "currentBuild.result = ${currentBuild.result}"
             when {
                 allOf {
                     expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
                 }
             }
             steps {
+                echo "currentBuild.result = ${currentBuild.result}"
                 echo 'Cloning source code from GitLab repository...'
                 dir('apps') {
                     checkout([
