@@ -1,0 +1,45 @@
+pipeline {
+    environment {
+        app_name = "${app_name}"
+        git_url = 'https://github.com/nateesoft/pos-frontend.git'
+    }
+    agent any
+    stages {
+        stage('Sync git') {
+            steps {
+                echo "app_name = ${app_name}"
+                build(job: 'My-pipeline')
+            }
+        }
+        stage('Checkout SCM') {
+            echo "currentBuild.result = ${currentBuild.result}"
+            when {
+                allOf {
+                    expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+                }
+            }
+            echo 'Cloning source code from GitLab repository...'
+            dir('apps') {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${env.git_apps_branch}"]],
+                    extensions: [[$class: 'CloneOption', timeout: 60]],
+                    userRemoteConfigs: [[url: "${env.git_url}"]]
+                ])
+            }
+        }
+        // stage('Build Application') {
+        //     echo "currentBuild.result = ${currentBuild.result}"
+        //     when {
+        //         allOf {
+        //             expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+        //         }
+        //     }
+        //     steps {
+        //         sh '''
+
+        //         '''
+        //     }
+        // }
+    }    
+}

@@ -10,5 +10,15 @@ pipeline {
                 build(job: 'My-pipeline')
             }
         }
+        stage('Checkout SCM') {
+            echo "currentBuild.result = ${currentBuild.result}"
+            when {
+                allOf {
+                    expression {
+                        currentBuild.result == null || currentBuild.result == 'SUCCESS'
+                    }
+                }
+            }
+        }
     }    
 }

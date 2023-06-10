@@ -1,0 +1,231 @@
+pipeline {
+    environment {
+        app_version="${latesttag}-${BUILD_NUMBER}"
+        dockerUrl="https://${docker_registry_name}"
+        registryCredential = "${registryCredential}"
+        s3file_1 = "${WORKSPACE}/apps/${app_name}/config/%i%.yml"
+        middleware_name = 'nodejs-13'
+        program_language = 'nodejs-vault'
+        git_url = 'git@gitdop.se.scb.co.th:/SCBConnect/ap1010-scbconnect.git'
+        git_apps_branch = "${git_apps_branch}"
+        git_credential_id = 'gitlab-deploy-key'
+        eks_zone = "${eks_zone}"
+        release_version = "${release_version}"
+    }
+    options {
+        ansiColor('xterm')
+        buildDiscarder(logRotator(numToKeepStr: '10',artifactDaysToKeepStr: '7', artifactNumToKeepStr: '1'))
+        disableConcurrentBuilds()
+        timeout(time: 60, unit: 'MINUTES')
+        timestamps()
+    }
+    agent { label 'k8s-aws-dev' }
+    stages {
+        stage('Sync git') {
+	        steps {
+                build(job: 'AP1010-CHAT/DevOps/GIT-SYNC/git_sync_ap1010-SCBConnect')
+	        }
+        }
+        stage('Checkout SCM') {
+            when {
+                allOf {
+                    expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+                }
+            }
+            steps {
+                echo 'Cloning source code from GitLab repository...'
+                dir('apps') {
+                    // git (
+                    //   url: env.git_url,
+                    //   credentialsId: env.git_credential_id,
+                    //   branch: env.git_apps_branch
+                    //     )
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "*/${env.git_apps_branch}"]], 
+                        doGenerateSubmoduleConfigurations: false, 
+                        extensions: [[$class: 'CloneOption', timeout: 60]], 
+                        submoduleCfg: [], 
+                        userRemoteConfigs: [[credentialsId: "${env.git_credential_id}", url: "${env.git_url}"]]
+                    ])
+                    sh 'rm -rf  ${WORKSPACE}/git_commit_apps.properties'      
+                    sh 'ssh -t -t -o StrictHostKeyChecking=no root@lbcmicromgtdev01.devcloud.scb "mkdir -p /apps/configs/$env_name/$app_name/$app_version"'
+                    sh 'git_commit_apps_parameters=$(git rev-parse HEAD); echo $git_commit_apps_parameters; echo $git_commit_apps_parameters > ${WORKSPACE}/git_commit_apps.properties'
+                }
+            }
+        }
+        // stage('SonarQube analysis') {
+        //     steps {
+        //         nvm('v13.7.0') {  
+        //             sh '''
+        //                 if [[ ${ScanCode} == 'ON' ]]
+        //                 then
+        //                 cd ${WORKSPACE}/apps/${app_name}/
+        //                     npm install && npm run scancode 
+        //                 fi
+        //             '''
+        //         }
+        //     }
+        // }
+        // stage("Quality Gate") {
+        //   steps {
+        //       timeout(time: 1, unit: 'HOURS') {
+        //         withSonarQubeEnv(credentialsId: 'sonar-id', installationName: 'sonarScanner') {
+        //           waitForQualityGate abortPipeline: true
+        //         }
+        //       }
+        //   }
+        // }
+        stage('Prepare configuration') {
+            when {
+                allOf {
+                    expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+                }
+            }
+            steps {
+                script {
+                    sh 'rm -rf  ${WORKSPACE}/Dockerfile'
+                    sh 'rm -rf  ${WORKSPACE}/startup.sh'
+                    sh 'cp ${WORKSPACE}/connect-configuration/scbconnect-template-config/$program_language/* ${WORKSPACE}'
+                    sh 'scp -rp ${WORKSPACE}/apps/${app_name}/config/$env_name.yml  root@lbcmicromgtdev01.devcloud.scb://apps/configs/$env_name/$app_name/$app_version || true'
+                    sh 'echo "PACKAGE_VERSION=${app_version}" > package_version.properties'
+                    sh 'sed -i "s/#app_name#/$app_name/g" ${WORKSPACE}/Dockerfile || true'
+                    sh 'sed -i "s/#app_version#/${app_version}/g" ${WORKSPACE}/Dockerfile || true'
+                    sh 'sed -i "s/#git_revision#/$GIT_COMMIT/g" ${WORKSPACE}/Dockerfile || true'
+                    sh 'sed -i "s/#env#/$env_name/g" ${WORKSPACE}/Dockerfile || true'
+                    sh 'sed -i "s/#app_name#/$app_name/g" ${WORKSPACE}/startup.sh || true'
+                    sh 'cat ${WORKSPACE}/Dockerfile'
+                }
+            }
+        }
+        stage('Build Application') {
+            when {
+                allOf {
+                    expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+                }
+            }
+            steps {
+                sh '''
+                mkdir -p ${WORKSPACE}/version-control
+                aws s3 cp s3://scbconnect-repositorys/deployment-config/middleware-version/docker-middleware-version.yaml ${WORKSPACE}/version-control/docker-middleware-version.yaml
+                current_middleware_id=$(/usr/bin/python ${WORKSPACE}/connect-configuration/facility-script/query-docker-image-id.py ${WORKSPACE}/version-control/docker-middleware-version.yaml $middleware_name)
+                sed -i "s@#current_middleware_id#@$current_middleware_id@" ${WORKSPACE}/Dockerfile
+                echo $current_middleware_id > ${WORKSPACE}/current_middleware_id.properties
+                '''
+            }
+        }
+        // stage('Build/Push Docker Image') {
+        //     when {
+        //         allOf {
+        //             expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+        //         }
+        //     }
+        //     steps {
+        //         withDockerRegistry([ credentialsId: registryCredential, url: 'https://harbordev.se.scb.co.th/ap1010-scbconnect' ]) {
+        //         sh "docker build -t ${docker_registry_name}/${app_name} ."
+        //         sh "docker tag ${docker_registry_name}/${app_name} ${docker_registry_name}/${app_name}:${app_version}"
+        //         sh 'docker push ${docker_registry_name}/${app_name}:${app_version}'
+        //         sh "docker rmi -f ${docker_registry_name}/${app_name}:${app_version}"
+        //         }
+        //     }
+        // }
+        // stage('Unused Images') {
+        //     when {
+        //         allOf {
+        //             expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+        //         }
+        //     }
+        //     steps {
+        //         sh '''
+        //             echo "will fail to remove images still used."
+        //             docker images | grep harbordev.se.scb.co.th/ap1010-scbconnect | grep " [years|months|weeks|days|hours|minutes]* ago" | awk '{print $3,$4,$5}' | awk '{print $1}' | xargs --no-run-if-empty docker rmi -f || true
+        //             echo "Those are used for Docker caching mechanism."
+        //             docker images -q --no-trunc --filter dangling=true | xargs --no-run-if-empty docker rmi || true
+        //             echo "Delete all dangling volumes."
+        //             docker volume ls -qf dangling=true | xargs --no-run-if-empty docker volume rm || true
+        //             echo "Chcking Images"
+        //             docker images | grep harbordev.se.scb.co.th/ap1010-scbconnect | grep " [years|months|weeks|days|hours|minutes]* ago" | awk '{print $3,$4,$5}' || true
+        //             docker images
+        //         '''
+        //     }
+        // }
+        // stage('Upload Application config to s3') {
+        //     when {
+        //         allOf {
+        //             expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+        //         }
+        //     }
+        //     steps {
+        //         sh 'rm -rf ${WORKSPACE}/s3-config'
+        //         sh 'mkdir -p ${WORKSPACE}/s3-config/{qa,sit,uat,prod,perf}/${app_version}'
+        //         sh '''for i in qa sit uat perf prod; 
+        //             do 
+        //                 new_env=$(echo $i | tr 'a-z' 'A-Z')
+        //                 s3file_1_replace=$(echo ${s3file_1//%i%/$i})
+        //                 cp -r $s3file_1_replace s3-config/$i/${app_version} || true
+        //             done'''
+        //         sh 'aws s3 cp  s3-config/ s3://scbconnect-repositorys/deployment-config/${app_name} --recursive'
+        //     }
+        // }
+        // stage("Create Environment Variables") {
+        //     steps {
+        //       script {
+        //             env.git_commit_apps = sh(script:'cat ${WORKSPACE}/git_commit_apps.properties', returnStdout: true).trim()
+        //             env.current_middleware_images_id = sh(script:'cat ${WORKSPACE}/current_middleware_id.properties', returnStdout: true).trim()
+        //             echo "git_commit_apps = ${env.git_commit_apps}"
+        //             echo "current_middleware_images_id = ${env.current_middleware_images_id}"
+        //             sh 'echo $git_commit_apps'
+        //             sh 'echo $current_middleware_images_id'
+        //         }
+        //     }
+        // }
+        stage("Trigger downstream to Update Version") {
+            steps {
+                sh '''
+                echo git_commit_apps=$git_commit_apps
+                echo git_apps_branch=$git_apps_branch
+                echo app_version=${app_version}
+                echo docker_registry_name=${docker_registry_name}/${app_name}:${app_version}
+                echo app_name=${app_name}
+                echo docker-config-revision=${GIT_COMMIT}
+                echo current_middleware_images_id=${current_middleware_images_id}
+                echo eks_zone=${eks_zone}
+                echo release_version = "${release_version}"
+                '''
+                build(
+                    job: 'DEV_AP1010-SCBConnect-App-Update-Version_Build',
+                    parameters: [
+                    string(name: 'package_version', value: "${app_version}"),
+                    string(name: 'current_app_images_id', value: "${docker_registry_name}/${app_name}:${app_version}"),
+                    string(name: 'app_name', value: "${app_name}"),
+                    string(name: 'git_revision', value: "${env.git_commit_apps}"),
+                    string(name: 'git_apps_branch', value: "${git_apps_branch}"),
+                    string(name: 'git_config_revision', value: "${GIT_COMMIT}"),
+                    string(name: 'current_middleware_images_id', value: "${env.current_middleware_images_id}"),
+                    string(name: 'eks_zone', value: "${eks_zone}"),
+                    string(name: 'release_version', value: "${release_version}"),
+                    ]
+                )
+                /** "Update-dashboard" : {
+                    build(
+                    job: 'connect_release-dashboard-update',
+                    parameters: [
+                        string(name: 'app_name', value: "${app_name}"),
+                        string(name: 'latesttag', value: "${latesttag}"),
+                        string(name: 'GIT_COMMIT', value: "${GIT_COMMIT}"),
+                        string(name: 'BUILD_NUMBER', value: "${BUILD_NUMBER}"),
+                        string(name: 'GIT_BRANCH', value: "${git_branch}")
+                    ],
+                    wait: false
+                    )
+                },*/
+                //)
+            }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+       }
+    }
+}
