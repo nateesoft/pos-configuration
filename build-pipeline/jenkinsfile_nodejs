@@ -5,12 +5,12 @@ pipeline {
     }
     agent any
     stages {
-        stage('Sync git') {
-            steps {
-                echo "app_name = ${app_name}"
-                build(job: 'My-pipeline')
-            }
-        }
+        // stage('Sync git') {
+        //     steps {
+        //         echo "app_name = ${app_name}"
+        //         build(job: 'My-pipeline')
+        //     }
+        // }
         stage('Checkout SCM') {
             when {
                 allOf {
@@ -30,18 +30,17 @@ pipeline {
                 }
             }
         }
-        // stage('Build Application') {
-        //     echo "currentBuild.result = ${currentBuild.result}"
-        //     when {
-        //         allOf {
-        //             expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
-        //         }
-        //     }
-        //     steps {
-        //         sh '''
-
-        //         '''
-        //     }
-        // }
+        stage('Build Application') {
+            when {
+                allOf {
+                    expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+                }
+            }
+            steps {
+                sh '''
+                node -v
+                '''
+            }
+        }
     }    
 }
